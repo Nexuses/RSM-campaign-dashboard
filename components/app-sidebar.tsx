@@ -5,19 +5,16 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboard,
-  Megaphone,
-  Workflow,
   FileText,
-  Calendar,
+  Image,
+  FileStack,
 } from "lucide-react"
 
 const menuItems = [
@@ -28,22 +25,22 @@ const menuItems = [
   },
   {
     title: "Campaigns",
-    icon: Megaphone,
+    icon: FileText,
     value: "campaigns",
   },
   {
     title: "Pipeline",
-    icon: Workflow,
+    icon: FileStack,
     value: "pipeline",
   },
   {
     title: "Content Repository",
-    icon: FileText,
+    icon: Image,
     value: "content-repository",
   },
   {
     title: "Calendar",
-    icon: Calendar,
+    icon: FileStack,
     value: "content-calendar",
   },
 ]
@@ -55,32 +52,47 @@ interface AppSidebarProps {
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <img
-            src="https://22527425.fs1.hubspotusercontent-na1.net/hubfs/22527425/MARS/RSM%20Academy%20Logo.svg"
-            alt="RSM Logo"
-            className="object-contain h-8 w-auto"
-          />
+    <Sidebar
+      className="group/sidebar border-0 bg-white transition-all duration-300 [&_[data-slot=sidebar-container]]:border-0 [&_[data-sidebar=sidebar]]:border-0 [&_[data-sidebar=sidebar]]:rounded-r-xl [&_[data-sidebar=sidebar]]:shadow-lg [&_[data-sidebar=sidebar]]:m-2 [&_[data-sidebar=sidebar]]:h-[calc(100vh-1rem)] [&_[data-slot=sidebar-container]]:!left-0 [&_[data-slot=sidebar-container]]:!translate-x-0 [&_[data-slot=sidebar-container]]:!w-[260px] [&_[data-slot=sidebar-container]]:[&:not([data-collapsible=offcanvas])]:border-0"
+    >
+      {/* Header with Logo */}
+      <SidebarHeader className="p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <img
+              src="https://22527425.fs1.hubspotusercontent-na1.net/hubfs/22527425/MARS/RSM%20Academy%20Logo.svg"
+              alt="RSM Logo"
+              className="h-6 w-auto object-contain"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-slate-900">RSM Dashboard</span>
+            <span className="text-xs text-slate-600">Campaign Management</span>
+          </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      
+      {/* Navigation Menu */}
+      <SidebarContent className="px-4 py-6">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon
+                const isActive = activeTab === item.value
                 return (
                   <SidebarMenuItem key={item.value}>
                     <SidebarMenuButton
-                      isActive={activeTab === item.value}
+                      isActive={isActive}
                       onClick={() => onTabChange(item.value)}
-                      tooltip={item.title}
+                      className={`h-10 w-full justify-start rounded-full px-4 transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/10 text-primary font-medium shadow-sm'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
                     >
-                      <Icon />
-                      <span>{item.title}</span>
+                      <Icon className={`h-5 w-5 mr-3 ${isActive ? '' : 'opacity-70'}`} />
+                      <span className="flex-1 text-left text-sm">{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -89,7 +101,6 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarRail />
     </Sidebar>
   )
 }

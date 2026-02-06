@@ -141,39 +141,78 @@ export function CampaignPerformanceChart() {
     ]
   }, [oneOnOneData, dripData, projectFilter, dateRangeFilter, customStartDate, customEndDate])
   return (
-    <Card className="shadow-md border-slate-200 bg-white">
-      <CardHeader className="pb-4 px-5 sm:px-6">
+    <Card className="border-0 bg-white shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+      <CardHeader className="pb-4 px-6 pt-6 bg-gradient-to-br from-slate-50 to-white border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gradient-to-br from-[#0db14b] to-[#0a9f42] shadow-md flex-shrink-0 flex items-center justify-center text-base" style={{ width: '1.2em', height: '1.2em' }}>
-            <TrendingUp className="text-white" style={{ width: '0.75em', height: '0.75em' }} />
+          <div className="rounded-xl bg-gradient-to-br from-[#0db14b] to-[#0a9f42] shadow-lg p-2.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+            <TrendingUp className="h-5 w-5 text-white" />
           </div>
-          <CardTitle className="text-base sm:text-lg font-semibold">Campaign Performance</CardTitle>
+          <div>
+            <CardTitle className="text-lg font-bold text-slate-900">Campaign Performance</CardTitle>
+            <CardDescription className="text-sm text-slate-600 mt-0.5">Open rates by campaign type</CardDescription>
+          </div>
         </div>
-        <CardDescription className="mt-1.5 text-sm">Open rates by campaign type</CardDescription>
       </CardHeader>
-      <CardContent className="px-5 sm:px-6 pb-5 sm:pb-6">
+      <CardContent className="px-6 pb-6 pt-6">
         {loading && (
-          <div className="h-[300px] sm:h-[350px] flex items-center justify-center text-slate-500 text-sm">
-            Loading campaign performance data...
+          <div className="h-[350px] flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center gap-3">
+              <div className="w-32 h-32 rounded-lg bg-slate-200"></div>
+              <p className="text-sm text-slate-500">Loading campaign performance data...</p>
+            </div>
           </div>
         )}
         {!loading && (
-          <div className="h-[300px] sm:h-[350px]">
+          <div className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
+              <BarChart 
+                data={chartData} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 20 }} 
+                barCategoryGap="25%"
+              >
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0b74bb" stopOpacity={1}/>
+                    <stop offset="100%" stopColor="#0a6ba8" stopOpacity={0.8}/>
+                  </linearGradient>
+                  <filter id="barShadow">
+                    <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15"/>
+                  </filter>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: "#64748b", fontSize: 13, fontWeight: 500 }} 
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fill: "#64748b", fontSize: 13 }} 
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "white",
                     border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)",
+                    padding: "12px",
                   }}
                   formatter={(value: number) => [`${value}%`, "Open Rate"]}
+                  cursor={{ fill: 'rgba(11, 116, 187, 0.1)' }}
                 />
-                <Bar dataKey="openRate" fill="#0b74bb" name="Open Rate %" radius={[8, 8, 0, 0]} barSize={50} />
+                <Bar 
+                  dataKey="openRate" 
+                  fill="url(#barGradient)" 
+                  name="Open Rate %" 
+                  radius={[12, 12, 0, 0]} 
+                  barSize={60}
+                  animationBegin={0}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
+                  style={{ filter: "url(#barShadow)" }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

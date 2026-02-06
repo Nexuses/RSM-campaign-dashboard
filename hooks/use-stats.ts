@@ -26,7 +26,8 @@ interface UseStatsOptions {
 }
 
 export function useStats(options: UseStatsOptions = {}) {
-  const { pollingInterval = 120000, autoPoll: optionAutoPoll = true, filter = 'default', startDate, endDate } = options;
+  // Increased default to 5 minutes to avoid Google Sheets API quota limits
+  const { pollingInterval = 300000, autoPoll: optionAutoPoll = true, filter = 'default', startDate, endDate } = options;
   const { autoRefresh } = useRefreshContext();
   const autoPoll = optionAutoPoll && autoRefresh;
   
@@ -34,8 +35,16 @@ export function useStats(options: UseStatsOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [retryDelay, setRetryDelay] = useState(300000);
 
   const fetchData = useCallback(async () => {
+    // Skip fetch if quota is exceeded
+    if (quotaExceeded) {
+      console.log('Skipping stats fetch - quota exceeded, waiting for retry');
+      return;
+    }
+
     try {
       setError(null);
       setLoading(true);
@@ -77,6 +86,8 @@ export function useStats(options: UseStatsOptions = {}) {
         });
         setLastUpdated(result.lastUpdated || new Date().toISOString());
         setError(null);
+        setQuotaExceeded(false);
+        setRetryDelay(300000);
       } else {
         const errorMsg = result.error || 'Failed to fetch stats';
         setError(errorMsg);
@@ -93,7 +104,14 @@ export function useStats(options: UseStatsOptions = {}) {
       
       // Handle quota errors specifically
       if (errorMessage.includes('Quota exceeded') || errorMessage.includes('quota')) {
-        errorMessage = 'API quota exceeded. Please wait a few minutes before refreshing. The dashboard will auto-update when quota resets.';
+        errorMessage = 'API quota exceeded. Auto-refresh paused. Will retry in 5 minutes.';
+        setQuotaExceeded(true);
+        setRetryDelay(prev => Math.min(prev * 1.5, 600000));
+        
+        setTimeout(() => {
+          setQuotaExceeded(false);
+          fetchData();
+        }, retryDelay);
       }
       
       setError(errorMessage);
@@ -101,16 +119,16 @@ export function useStats(options: UseStatsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filter, startDate, endDate]);
+  }, [filter, startDate, endDate, quotaExceeded, retryDelay]);
 
   useEffect(() => {
     fetchData();
 
-    if (autoPoll) {
+    if (autoPoll && !quotaExceeded) {
       const interval = setInterval(fetchData, pollingInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchData, pollingInterval, autoPoll]);
+  }, [fetchData, pollingInterval, autoPoll, quotaExceeded]);
 
   // Listen for manual refresh events
   useEffect(() => {

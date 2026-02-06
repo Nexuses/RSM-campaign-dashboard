@@ -91,88 +91,92 @@ export function PipelineStatus() {
   }, [data])
 
   return (
-    <Card className="shadow-md border border-slate-200 bg-white">
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-5 sm:mb-6">
+    <Card className="border-0 bg-white shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex-1">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Pipeline Status</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Pipeline Status</h2>
             <p className="text-sm text-slate-600 mt-1.5">Current lead distribution across pipeline stages</p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {error && (
-              <span className="text-xs sm:text-sm text-red-600 truncate max-w-[150px] sm:max-w-none">⚠️ <span className="hidden sm:inline">{error}</span><span className="sm:hidden">Error</span></span>
+              <span className="text-sm text-red-600 truncate max-w-[200px]">⚠️ {error}</span>
             )}
             {lastUpdated && !error && (
               <span className="text-xs text-slate-500 whitespace-nowrap">
-                <span className="hidden sm:inline">Updated: </span>{new Date(lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                Updated: {new Date(lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
             <button
               onClick={refetch}
               disabled={loading}
-              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-0 text-xs sm:text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-md sm:rounded-none p-1 sm:p-0 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Total Leads */}
-          <div className="bg-white rounded-xl p-5 border border-[#0db14b] hover:border-[3px] hover:border-[#0db14b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-start justify-between">
+          <div className="group relative bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-[#0b74bb] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0b74bb]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 font-medium mb-2">Total Leads</p>
-                <p className="text-3xl sm:text-4xl font-bold text-slate-900 leading-none">
+                <p className="text-sm text-slate-600 font-medium mb-2">Total Leads</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none">
                   {loading ? '...' : stats.totalLeads.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-lg p-2.5 ml-3 flex-shrink-0" style={{ backgroundColor: '#0b74bb' }}>
+              <div className="rounded-xl bg-gradient-to-br from-[#0b74bb] to-[#0a6ba8] shadow-lg p-3 ml-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                 <Target className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
 
           {/* Scheduled */}
-          <div className="bg-white rounded-xl p-5 border border-[#0db14b] hover:border-[3px] hover:border-[#0db14b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-start justify-between">
+          <div className="group relative bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-[#58595b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#58595b]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 font-medium mb-2">Scheduled</p>
-                <p className="text-3xl sm:text-4xl font-bold text-slate-900 leading-none">
+                <p className="text-sm text-slate-600 font-medium mb-2">Scheduled</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none">
                   {loading ? '...' : stats.scheduled.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-lg p-2.5 ml-3 flex-shrink-0" style={{ backgroundColor: '#58595b' }}>
+              <div className="rounded-xl bg-gradient-to-br from-[#58595b] to-[#4a4b4d] shadow-lg p-3 ml-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                 <Calendar className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
 
           {/* Hot Leads */}
-          <div className="bg-white rounded-xl p-5 border border-[#0db14b] hover:border-[3px] hover:border-[#0db14b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-start justify-between">
+          <div className="group relative bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-[#0db14b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0db14b]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 font-medium mb-2">Hot Leads</p>
-                <p className="text-3xl sm:text-4xl font-bold text-slate-900 leading-none">
+                <p className="text-sm text-slate-600 font-medium mb-2">Hot Leads</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none">
                   {loading ? '...' : stats.hotLeads.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-lg p-2.5 ml-3 flex-shrink-0" style={{ backgroundColor: '#0db14b' }}>
+              <div className="rounded-xl bg-gradient-to-br from-[#0db14b] to-[#0a9f42] shadow-lg p-3 ml-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                 <Flame className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
 
           {/* Meeting Done */}
-          <div className="bg-white rounded-xl p-5 border border-[#0db14b] hover:border-[3px] hover:border-[#0db14b] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-start justify-between">
+          <div className="group relative bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-[#0b74bb] transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0b74bb]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 font-medium mb-2">Meeting Done</p>
-                <p className="text-3xl sm:text-4xl font-bold text-slate-900 leading-none">
+                <p className="text-sm text-slate-600 font-medium mb-2">Meeting Done</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none">
                   {loading ? '...' : stats.meetingDone.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-lg p-2.5 ml-3 flex-shrink-0" style={{ backgroundColor: '#0b74bb' }}>
+              <div className="rounded-xl bg-gradient-to-br from-[#0b74bb] to-[#0a6ba8] shadow-lg p-3 ml-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                 <CheckCircle2 className="w-5 h-5 text-white" />
               </div>
             </div>

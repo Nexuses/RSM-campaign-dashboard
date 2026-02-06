@@ -36,8 +36,8 @@ interface UseSheetsDataOptions {
 }
 
 export function useSheetsData(options: UseSheetsDataOptions = {}) {
-  // Increased default to 2 minutes to avoid Google Sheets API quota limits
-  const { pollingInterval = 120000, autoPoll: optionAutoPoll = true, sheetType = 'campaignData' } = options;
+  // Increased default to 5 minutes to avoid Google Sheets API quota limits
+  const { pollingInterval = 300000, autoPoll: optionAutoPoll = true, sheetType = 'campaignData' } = options;
   const { autoRefresh } = useRefreshContext();
   const autoPoll = optionAutoPoll && autoRefresh;
   
@@ -46,8 +46,16 @@ export function useSheetsData(options: UseSheetsDataOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [retryDelay, setRetryDelay] = useState(300000); // Start with 5 minutes
 
   const fetchData = useCallback(async () => {
+    // Skip fetch if quota is exceeded
+    if (quotaExceeded) {
+      console.log('Skipping fetch - quota exceeded, waiting for retry');
+      return;
+    }
+
     try {
       setError(null);
       setLoading(true);
@@ -79,6 +87,8 @@ export function useSheetsData(options: UseSheetsDataOptions = {}) {
         });
         setLastUpdated(result.lastUpdated || new Date().toISOString());
         setError(null);
+        setQuotaExceeded(false);
+        setRetryDelay(300000); // Reset retry delay on success
       } else {
         // API returned success: false, show the error message
         const errorMsg = result.error || result.message || 'Failed to fetch data from Google Sheets';
@@ -98,11 +108,15 @@ export function useSheetsData(options: UseSheetsDataOptions = {}) {
       
       // Handle quota errors specifically
       if (errorMessage.includes('Quota exceeded') || errorMessage.includes('quota')) {
-        errorMessage = 'API quota exceeded. Please wait a few minutes before refreshing. The dashboard will auto-update when quota resets.';
-        // Disable auto-polling temporarily on quota errors
-        if (autoPoll) {
-          console.warn('Quota exceeded - auto-polling will resume after delay');
-        }
+        errorMessage = 'API quota exceeded. Auto-refresh paused. Will retry in 5 minutes.';
+        setQuotaExceeded(true);
+        setRetryDelay(prev => Math.min(prev * 1.5, 600000)); // Exponential backoff, max 10 minutes
+        
+        // Schedule retry after delay
+        setTimeout(() => {
+          setQuotaExceeded(false);
+          fetchData();
+        }, retryDelay);
       }
       
       setError(errorMessage);
@@ -110,18 +124,18 @@ export function useSheetsData(options: UseSheetsDataOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sheetType, quotaExceeded, retryDelay]);
 
   useEffect(() => {
     // Initial fetch
     fetchData();
 
-    // Set up polling if enabled
-    if (autoPoll) {
+    // Set up polling if enabled and quota not exceeded
+    if (autoPoll && !quotaExceeded) {
       const interval = setInterval(fetchData, pollingInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchData, pollingInterval, autoPoll]);
+  }, [fetchData, pollingInterval, autoPoll, quotaExceeded]);
 
   // Listen for manual refresh events
   useEffect(() => {

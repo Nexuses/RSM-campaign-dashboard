@@ -163,25 +163,46 @@ export function StatsCards() {
         )}
       </div>
       
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {statConfigs.map((stat) => {
           const Icon = stat.icon
           const value = stats?.[stat.key] || (loading ? "..." : "0")
+          const description = getDescription(stat.key, filter)
+          
+          // Color mapping for icons
+          const iconColors: Record<string, { bg: string, icon: string }> = {
+            'totalProspects': { bg: 'from-[#0b74bb] to-[#0a6ba8]', icon: 'text-white' },
+            'hotLeads': { bg: 'from-[#0db14b] to-[#0a9f42]', icon: 'text-white' },
+            'activePipeline': { bg: 'from-[#0db14b] to-[#0a9f42]', icon: 'text-white' },
+            'avgOpenRate': { bg: 'from-[#0b74bb] to-[#0a6ba8]', icon: 'text-white' },
+          }
+          
+          const colors = iconColors[stat.key] || { bg: 'from-[#58595b] to-[#4a4b4d]', icon: 'text-white' }
           
           return (
             <Card
               key={stat.title}
-              className={`hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-md bg-white ${stat.borderColor} ${stat.hoverBorderColor}`}
+              className={`group relative overflow-hidden border-0 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 ${stat.borderColor} ${stat.hoverBorderColor}`}
             >
-              <CardContent className="p-5 sm:p-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2.5 rounded-lg bg-gradient-to-br ${stat.gradient} shadow-md flex-shrink-0`}>
-                      <Icon className="h-5 w-5 text-white" />
+              <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <CardContent className="relative p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`rounded-xl bg-gradient-to-br ${colors.bg} shadow-lg p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className={`h-5 w-5 ${colors.icon}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 truncate">{stat.title}</p>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold text-slate-700 truncate">{stat.title}</p>
+                    <div>
+                      <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">{value}</p>
+                      {description && (
+                        <p className="text-xs text-slate-500 mt-2">{description}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-3xl sm:text-4xl font-bold text-slate-900 leading-none">{value}</p>
                 </div>
               </CardContent>
             </Card>

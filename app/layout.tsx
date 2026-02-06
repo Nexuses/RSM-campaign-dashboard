@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={true}>
           <FilterProvider>
             <RefreshProvider>
               {children}

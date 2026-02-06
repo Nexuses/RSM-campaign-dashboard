@@ -18,7 +18,8 @@ interface UseRawDataOptions {
 }
 
 export function useRawData(options: UseRawDataOptions) {
-  const { sheetName, pollingInterval = 120000, autoPoll: optionAutoPoll = true } = options;
+  // Increased default to 5 minutes to avoid Google Sheets API quota limits
+  const { sheetName, pollingInterval = 300000, autoPoll: optionAutoPoll = true } = options;
   const { autoRefresh } = useRefreshContext();
   const autoPoll = optionAutoPoll && autoRefresh;
 
@@ -27,11 +28,19 @@ export function useRawData(options: UseRawDataOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [retryDelay, setRetryDelay] = useState(300000);
 
   const fetchData = useCallback(async () => {
     if (!sheetName) {
       setData([]);
       setLoading(false);
+      return;
+    }
+
+    // Skip fetch if quota is exceeded
+    if (quotaExceeded) {
+      console.log('Skipping raw data fetch - quota exceeded, waiting for retry');
       return;
     }
 
@@ -58,6 +67,8 @@ export function useRawData(options: UseRawDataOptions) {
         setHeaders(result.headers || []);
         setLastUpdated(result.lastUpdated || new Date().toISOString());
         setError(null);
+        setQuotaExceeded(false);
+        setRetryDelay(300000);
       } else {
         const errorMsg = result.error || 'Failed to fetch raw data';
         setError(errorMsg);
@@ -69,7 +80,14 @@ export function useRawData(options: UseRawDataOptions) {
       let errorMessage = err.message || 'Failed to fetch raw data';
 
       if (errorMessage.includes('Quota exceeded') || errorMessage.includes('quota')) {
-        errorMessage = 'API quota exceeded. Please wait a few minutes before refreshing.';
+        errorMessage = 'API quota exceeded. Auto-refresh paused. Will retry in 5 minutes.';
+        setQuotaExceeded(true);
+        setRetryDelay(prev => Math.min(prev * 1.5, 600000));
+        
+        setTimeout(() => {
+          setQuotaExceeded(false);
+          fetchData();
+        }, retryDelay);
       }
 
       setError(errorMessage);
@@ -80,15 +98,15 @@ export function useRawData(options: UseRawDataOptions) {
     } finally {
       setLoading(false);
     }
-  }, [sheetName]);
+  }, [sheetName, quotaExceeded, retryDelay]);
 
   useEffect(() => {
     fetchData();
-    if (autoPoll && sheetName) {
+    if (autoPoll && sheetName && !quotaExceeded) {
       const interval = setInterval(fetchData, pollingInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchData, pollingInterval, autoPoll, sheetName]);
+  }, [fetchData, pollingInterval, autoPoll, sheetName, quotaExceeded]);
 
   // Listen for manual refresh events
   useEffect(() => {

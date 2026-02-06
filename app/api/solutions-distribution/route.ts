@@ -3,11 +3,13 @@ import { getSheetData, parseSheetData } from '@/lib/google-sheets';
 
 /**
  * Helper function to normalize solution name
+ * Returns normalized name for known categories, or original name for others
  */
-function normalizeSolution(solution: string): string | null {
-  if (!solution) return null;
+function normalizeSolution(solution: string): string {
+  if (!solution) return '';
   
-  const solutionLower = solution.toString().trim().toLowerCase();
+  const solutionTrimmed = solution.toString().trim();
+  const solutionLower = solutionTrimmed.toLowerCase();
   
   // Check for VAPT (exact match or contains VAPT)
   if (solutionLower === 'vapt' || solutionLower.includes('vapt')) {
@@ -28,7 +30,37 @@ function normalizeSolution(solution: string): string | null {
     return 'ESG';
   }
   
-  return null;
+  // Return original solution name for other entries
+  return solutionTrimmed;
+}
+
+/**
+ * Generate a color for unknown solutions based on a hash of the name
+ */
+function generateColorForSolution(solutionName: string): string {
+  // RSM brand colors for known solutions
+  const brandColors: Record<string, string> = {
+    'ESG': '#0b74bb', // RSM blue
+    'Transitional Advisory': '#0db14b', // RSM green
+    'VAPT': '#58595b', // RSM grey
+  };
+  
+  if (brandColors[solutionName]) {
+    return brandColors[solutionName];
+  }
+  
+  // Generate a consistent color for unknown solutions using a simple hash
+  let hash = 0;
+  for (let i = 0; i < solutionName.length; i++) {
+    hash = solutionName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  // Generate a color in a pleasant range (avoid too dark or too light)
+  const hue = Math.abs(hash % 360);
+  const saturation = 60 + (Math.abs(hash) % 20); // 60-80%
+  const lightness = 45 + (Math.abs(hash) % 15); // 45-60%
+  
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
 /**
@@ -66,51 +98,64 @@ export async function GET(request: Request) {
       );
     }
 
-    // Fetch data from "RSM Stats - Drip" sheet
-    const sheetName = 'RSM Stats - Drip';
-    const range = `${sheetName}!A1:ZZ10000`;
-    const rawData = await getSheetData(spreadsheetId, range);
+    // Fetch data from both sheets: "RSM Stats - Drip" and "1-1 RSM : All Campaign"
+    const sheetNames = ['RSM Stats - Drip', '1-1 RSM : All Campaign'];
+    const range = 'A1:ZZ10000';
     
-    if (!rawData || rawData.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        lastUpdated: new Date().toISOString(),
-      });
-    }
-
-    const headers = rawData[0] as string[];
-    const parsedData = parseSheetData(rawData, headers);
-    
-    // Count solutions
+    // Count solutions from all sheets
     const solutionCounts: Record<string, number> = {};
     
-    parsedData.forEach((row: any) => {
-      const solution = getColumnValue(row, ['Solution', 'solution', 'SOLUTION']);
-      if (!solution) return;
-      
-      const normalizedSolution = normalizeSolution(solution.toString());
-      if (normalizedSolution) {
-        solutionCounts[normalizedSolution] = (solutionCounts[normalizedSolution] || 0) + 1;
+    // Process each sheet
+    for (const sheetName of sheetNames) {
+      try {
+        const sheetRange = `${sheetName}!${range}`;
+        const rawData = await getSheetData(spreadsheetId, sheetRange);
+        
+        if (!rawData || rawData.length === 0) {
+          console.log(`[Solutions Distribution] ${sheetName} sheet is empty or not found`);
+          continue;
+        }
+
+        const headers = rawData[0] as string[];
+        const parsedData = parseSheetData(rawData, headers);
+        
+        // Count solutions from this sheet
+        parsedData.forEach((row: any) => {
+          const solution = getColumnValue(row, ['Solution', 'solution', 'SOLUTION']);
+          if (!solution) return;
+          
+          const normalizedSolution = normalizeSolution(solution.toString());
+          // Include all solutions, including unknown ones
+          if (normalizedSolution && normalizedSolution.trim() !== '') {
+            solutionCounts[normalizedSolution] = (solutionCounts[normalizedSolution] || 0) + 1;
+          }
+        });
+        
+        console.log(`[Solutions Distribution] Processed ${parsedData.length} rows from ${sheetName}`);
+      } catch (error: any) {
+        console.error(`[Solutions Distribution] Error processing ${sheetName}:`, error);
+        // Continue processing other sheets even if one fails
       }
-    });
+    }
 
-    // Define colors for the three allowed solutions (RSM brand colors)
-    const colorMap: Record<string, string> = {
-      'ESG': '#0b74bb', // RSM blue
-      'Transitional Advisory': '#0db14b', // RSM green
-      'VAPT': '#58595b', // RSM grey
-    };
-
-    // Return data in a consistent order: VAPT, TA, ESG
-    const orderedSolutions = ['VAPT', 'Transitional Advisory', 'ESG'];
-    const data = orderedSolutions
-      .filter(name => solutionCounts[name] > 0)
-      .map((name) => ({
-        name,
-        value: solutionCounts[name],
-        fill: colorMap[name],
-      }));
+    // Get all solution names
+    const allSolutions = Object.keys(solutionCounts);
+    
+    // Define preferred order: VAPT, Transitional Advisory, ESG first, then others alphabetically
+    const preferredOrder = ['VAPT', 'Transitional Advisory', 'ESG'];
+    const orderedSolutions = [
+      ...preferredOrder.filter(name => solutionCounts[name] > 0),
+      ...allSolutions
+        .filter(name => !preferredOrder.includes(name))
+        .sort()
+    ];
+    
+    // Create data array with colors
+    const data = orderedSolutions.map((name) => ({
+      name,
+      value: solutionCounts[name],
+      fill: generateColorForSolution(name),
+    }));
     
     return NextResponse.json({
       success: true,

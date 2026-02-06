@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { useSheetsData } from "@/hooks/use-sheets-data"
 import { useFilterContext } from "@/contexts/filter-context"
+import { useRefreshContext } from "@/contexts/refresh-context"
 import { BarChart3 } from "lucide-react"
 
 const mockData = [
@@ -23,168 +23,219 @@ const mockData = [
   { name: "VAPT Followup", openRate: 36.05, clickRate: 0 },
 ]
 
+interface CampaignRateData {
+  name: string;
+  openRate: number;
+  clickRate: number;
+  date?: string;
+}
+
 export function OpenRateChart() {
-  // Using default 2-minute interval to avoid API quota limits
-  const { data: sheetsData } = useSheetsData()
-  const { projectFilter, dateRangeFilter, customStartDate, customEndDate, getDateRange } = useFilterContext()
+  const [campaignData, setCampaignData] = useState<CampaignRateData[]>([])
+  const [loading, setLoading] = useState(true)
+  const { dateRangeFilter, customStartDate, customEndDate, getDateRange } = useFilterContext()
+  const { autoRefresh } = useRefreshContext()
+
+  // Fetch open rate data from API
+  useEffect(() => {
+    const fetchOpenRateData = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/open-rate')
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch open rate data')
+        }
+
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          setCampaignData(result.data)
+        } else {
+          setCampaignData([])
+        }
+      } catch (error) {
+        console.error('Error fetching open rate data:', error)
+        setCampaignData([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Initial fetch
+    fetchOpenRateData()
+
+    // Set up polling if auto-refresh is enabled (every 5 minutes)
+    if (autoRefresh) {
+      const interval = setInterval(fetchOpenRateData, 300000) // 5 minutes
+      return () => clearInterval(interval)
+    }
+  }, [autoRefresh])
+
+  // Listen for manual refresh events
+  useEffect(() => {
+    const handleRefresh = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/open-rate')
+        
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setCampaignData(result.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing open rate data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    window.addEventListener('dashboard-refresh', handleRefresh)
+    return () => window.removeEventListener('dashboard-refresh', handleRefresh)
+  }, [])
 
   const data = useMemo(() => {
-    if (sheetsData && sheetsData.length > 0) {
-      // Apply filters
-      let filteredData = sheetsData
+    if (!campaignData || campaignData.length === 0) return mockData
 
-      // Apply project filter
-      if (projectFilter !== 'all') {
-        filteredData = filteredData.filter((row) => {
-          const solution = row.project || row.solutionArea || ''
-          const solutionLower = solution.toString().toLowerCase()
-          if (projectFilter === 'ESG') return solutionLower === 'esg' || solutionLower.startsWith('esg')
-          if (projectFilter === 'TA') return solutionLower === 'ta' || solutionLower === 'tas' || solutionLower.includes('transitional')
-          if (projectFilter === 'VAPT') return solutionLower === 'vapt' || solutionLower.includes('vapt')
-          return true
-        })
-      }
-
-      // Apply date filter
-      const dateRange = getDateRange()
-      if (dateRange.start && dateRange.end) {
-        filteredData = filteredData.filter((row) => {
-          const dateStr = row.date || ''
-          if (!dateStr) return false
+    // Apply date filter
+    let filteredData = campaignData
+    const dateRange = getDateRange()
+    
+    if (dateRange.start && dateRange.end) {
+      filteredData = campaignData.filter((campaign) => {
+        if (!campaign.date) return true // Include campaigns without dates
+        
+        try {
+          const dateStr = campaign.date.toString()
+          const dateParts = dateStr.split('/')
+          let date: Date | null = null
           
-          try {
-            const dateParts = dateStr.toString().split('/')
-            let date: Date | null = null
-            if (dateParts.length === 3) {
-              const month = parseInt(dateParts[0], 10) - 1
-              const day = parseInt(dateParts[1], 10)
-              const year = parseInt(dateParts[2], 10)
-              date = new Date(year, month, day)
-            } else {
-              date = new Date(dateStr)
-            }
-            
-            if (!date || isNaN(date.getTime())) return false
-            date.setHours(0, 0, 0, 0)
-            return date >= dateRange.start! && date <= dateRange.end!
-          } catch (e) {
-            return false
-          }
-        })
-      }
-
-      return filteredData
-        .filter((row) => {
-          // Only include rows that have at least one valid rate value
-          const openRateValue = row.openRate;
-          const clickRateValue = row.clickRate;
-          
-          // Check if openRate has a valid value
-          const hasOpenRate = openRateValue !== null && 
-                             openRateValue !== undefined && 
-                             openRateValue !== '' &&
-                             openRateValue.toString().trim() !== '' &&
-                             openRateValue.toString().trim() !== '-' &&
-                             openRateValue.toString().trim().toLowerCase() !== 'n/a' &&
-                             openRateValue.toString().trim().toLowerCase() !== 'na';
-          
-          // Check if clickRate has a valid value
-          const hasClickRate = clickRateValue !== null && 
-                              clickRateValue !== undefined && 
-                              clickRateValue !== '' &&
-                              clickRateValue.toString().trim() !== '' &&
-                              clickRateValue.toString().trim() !== '-' &&
-                              clickRateValue.toString().trim().toLowerCase() !== 'n/a' &&
-                              clickRateValue.toString().trim().toLowerCase() !== 'na';
-          
-          return hasOpenRate || hasClickRate;
-        })
-        .map((row) => {
-          // Parse openRate - use 0 only if it's explicitly 0, otherwise skip empty values
-          let openRate = 0;
-          const openRateValue = row.openRate;
-          if (openRateValue !== null && 
-              openRateValue !== undefined && 
-              openRateValue !== '' &&
-              openRateValue.toString().trim() !== '' &&
-              openRateValue.toString().trim() !== '-' &&
-              openRateValue.toString().trim().toLowerCase() !== 'n/a' &&
-              openRateValue.toString().trim().toLowerCase() !== 'na') {
-            const parsed = parseFloat(openRateValue.toString().replace('%', '').replace(/[,\s]/g, ''));
-            openRate = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
+          if (dateParts.length === 3) {
+            const month = parseInt(dateParts[0], 10) - 1
+            const day = parseInt(dateParts[1], 10)
+            const year = parseInt(dateParts[2], 10)
+            date = new Date(year, month, day)
+          } else {
+            date = new Date(dateStr)
           }
           
-          // Parse clickRate - use 0 only if it's explicitly 0, otherwise skip empty values
-          let clickRate = 0;
-          const clickRateValue = row.clickRate;
-          if (clickRateValue !== null && 
-              clickRateValue !== undefined && 
-              clickRateValue !== '' &&
-              clickRateValue.toString().trim() !== '' &&
-              clickRateValue.toString().trim() !== '-' &&
-              clickRateValue.toString().trim().toLowerCase() !== 'n/a' &&
-              clickRateValue.toString().trim().toLowerCase() !== 'na') {
-            const parsed = parseFloat(clickRateValue.toString().replace('%', '').replace(/[,\s]/g, ''));
-            clickRate = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
-          }
-          
-          return {
-            name: row.campaignName.length > 20 
-              ? row.campaignName.substring(0, 20) + '...' 
-              : row.campaignName,
-            openRate: openRate,
-            clickRate: clickRate,
-          }
-        })
-        .slice(0, 20) // Limit to 20 items for better visualization
+          if (!date || isNaN(date.getTime())) return true // Include if date parsing fails
+          date.setHours(0, 0, 0, 0)
+          return date >= dateRange.start! && date <= dateRange.end!
+        } catch (e) {
+          return true // Include if date parsing fails
+        }
+      })
     }
-    return mockData
-  }, [sheetsData, projectFilter, dateRangeFilter, customStartDate, customEndDate, getDateRange])
+
+    return filteredData
+      .map((campaign) => ({
+        name: campaign.name.length > 20 
+          ? campaign.name.substring(0, 20) + '...' 
+          : campaign.name,
+        openRate: campaign.openRate,
+        clickRate: campaign.clickRate,
+      }))
+      .slice(0, 20) // Limit to 20 items for better visualization
+  }, [campaignData, dateRangeFilter, customStartDate, customEndDate, getDateRange])
   return (
-    <Card className="shadow-md border-slate-200 bg-white">
-      <CardHeader className="pb-4 px-5 sm:px-6">
+    <Card className="border-0 bg-white shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+      <CardHeader className="pb-4 px-6 pt-6 bg-gradient-to-br from-slate-50 to-white border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gradient-to-br from-[#0db14b] to-[#0a9f42] shadow-md flex-shrink-0 flex items-center justify-center text-base" style={{ width: '1.2em', height: '1.2em' }}>
-            <BarChart3 className="text-white" style={{ width: '0.75em', height: '0.75em' }} />
+          <div className="rounded-xl bg-gradient-to-br from-[#0db14b] to-[#0a9f42] shadow-lg p-2.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+            <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <CardTitle className="text-base sm:text-lg font-semibold">Campaign Open & Click Rates</CardTitle>
+          <div>
+            <CardTitle className="text-lg font-bold text-slate-900">Campaign Open & Click Rates</CardTitle>
+            <CardDescription className="text-sm text-slate-600 mt-0.5">Comparison of campaign performance metrics</CardDescription>
+          </div>
         </div>
-        <CardDescription className="mt-1.5 text-sm">Comparison of campaign performance metrics</CardDescription>
       </CardHeader>
-      <CardContent className="px-5 sm:px-6 pb-5 sm:pb-6">
-        <div className="h-[350px] sm:h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CardContent className="px-6 pb-6 pt-6">
+        {loading && (
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-slate-200"></div>
+              <p className="text-sm text-slate-500">Loading open rate data...</p>
+            </div>
+          </div>
+        )}
+        {!loading && (
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+              <defs>
+                <linearGradient id="openRateGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0b74bb" stopOpacity={1}/>
+                  <stop offset="100%" stopColor="#0a6ba8" stopOpacity={0.8}/>
+                </linearGradient>
+                <linearGradient id="clickRateGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#58595b" stopOpacity={1}/>
+                  <stop offset="100%" stopColor="#4a4b4d" stopOpacity={0.8}/>
+                </linearGradient>
+                <filter id="barShadow">
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15"/>
+                </filter>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="name"
                 angle={-45}
                 textAnchor="end"
                 height={100}
-                tick={{ fill: "#64748b", fontSize: 12 }}
+                tick={{ fill: "#64748b", fontSize: 12, fontWeight: 500 }}
+                axisLine={false}
+                tickLine={false}
               />
-              <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
+              <YAxis 
+                tick={{ fill: "#64748b", fontSize: 13 }} 
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "white",
                   border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)",
+                  padding: "12px",
                 }}
+                cursor={{ fill: 'rgba(11, 116, 187, 0.1)' }}
               />
-              <Bar dataKey="openRate" fill="#0b74bb" name="Open Rate %" radius={[8, 8, 0, 0]} /> {/* RSM blue */}
-              <Bar dataKey="clickRate" fill="#58595b" name="Click Rate %" radius={[8, 8, 0, 0]} /> {/* RSM grey */}
+              <Bar 
+                dataKey="openRate" 
+                fill="url(#openRateGradient)" 
+                name="Open Rate %" 
+                radius={[12, 12, 0, 0]}
+                animationBegin={0}
+                animationDuration={1000}
+                animationEasing="ease-out"
+                style={{ filter: "url(#barShadow)" }}
+              />
+              <Bar 
+                dataKey="clickRate" 
+                fill="url(#clickRateGradient)" 
+                name="Click Rate %" 
+                radius={[12, 12, 0, 0]}
+                animationBegin={200}
+                animationDuration={1000}
+                animationEasing="ease-out"
+                style={{ filter: "url(#barShadow)" }}
+              />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded flex-shrink-0" style={{ backgroundColor: '#0b74bb' }}></div>
-            <span className="text-sm text-slate-600">Open Rate %</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded flex-shrink-0" style={{ backgroundColor: '#58595b' }}></div>
-            <span className="text-sm text-slate-600">Click Rate %</span>
+        )}
+        <div className="flex items-center justify-center gap-6 mt-6 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-4 h-4 rounded-md flex-shrink-0 shadow-sm" style={{ backgroundColor: '#0b74bb' }}></div>
+            <span className="text-sm font-medium text-slate-700">Open Rate %</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-4 h-4 rounded-md flex-shrink-0 shadow-sm" style={{ backgroundColor: '#58595b' }}></div>
+            <span className="text-sm font-medium text-slate-700">Click Rate %</span>
           </div>
         </div>
       </CardContent>

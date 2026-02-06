@@ -9,13 +9,13 @@ import { OpenRateChart } from "@/components/open-rate-chart"
 import { SolutionsDistributionChart } from "@/components/solutions-distribution-chart"
 import { CampaignPerformanceChart } from "@/components/campaign-performance-chart"
 import { ActiveCampaignsChart } from "@/components/active-campaigns-chart"
-import { RawDataTable } from "@/components/raw-data-table"
 import { CampaignDetailView } from "@/components/campaign-detail-view"
 import { PipelineStatus } from "@/components/pipeline-status"
 import { PipelineInsights } from "@/components/pipeline-insights"
 import { GlobalFilters } from "@/components/global-filters"
 import { ExternalLink, RefreshCw } from "lucide-react"
 import { useRefreshContext } from "@/contexts/refresh-context"
+import { RawDataTable } from "@/components/raw-data-table"
 import { useStats } from "@/hooks/use-stats"
 
 export default function DashboardPage() {
@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const { lastUpdated, loading } = useStats()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex w-full overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex w-full overflow-x-hidden">
       <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <SidebarInset className="overflow-x-hidden">
         <header className="border-b border-slate-300 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
@@ -43,29 +43,33 @@ export default function DashboardPage() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8 py-6">
-            <div className="mb-6 pt-6 pb-4 px-4 sm:px-6 bg-white rounded-lg border border-[#0db14b] shadow-sm">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                <div className="flex-1">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 leading-tight mb-2">RSM Campaign Dashboard</h1>
-                  <p className="text-sm sm:text-base text-slate-600">Nexuses for RSM - Campaign Performance Overview</p>
+            <Card className="mb-8 border-0 bg-gradient-to-br from-white to-slate-50 shadow-xl overflow-hidden">
+              <CardContent className="pt-8 pb-6 px-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-tight mb-2">
+                      RSM Campaign Dashboard
+                    </h1>
+                    <p className="text-base text-slate-600 mt-1">Nexuses for RSM - Campaign Performance Overview</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {lastUpdated && (
+                      <span className="text-sm text-slate-500 text-right">
+                        Last updated: {new Date(lastUpdated).toLocaleTimeString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={refreshAll}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200 disabled:opacity-50 shadow-sm hover:shadow-md"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5 sm:gap-2">
-                  {lastUpdated && (
-                    <span className="text-xs sm:text-sm text-slate-500 text-right">
-                      Last updated: {new Date(lastUpdated).toLocaleTimeString()}
-                    </span>
-                  )}
-                  <button
-                    onClick={refreshAll}
-                    disabled={loading}
-                    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {activeTab === "overview" && (
               <div className="w-full max-w-full overflow-x-hidden">
@@ -94,8 +98,31 @@ export default function DashboardPage() {
                 <div className="mt-6 sm:mt-8 w-full max-w-full">
                   <PipelineStatus />
                 </div>
-                <div className="mt-6 sm:mt-8 w-full max-w-full overflow-x-auto">
-                  <RawDataTable />
+                {/* ESG Manual Reach table - hidden for now */}
+                {false && (
+                  <div className="mt-6 sm:mt-8 w-full max-w-full overflow-x-auto">
+                    <RawDataTable />
+                  </div>
+                )}
+                <div className="mt-6 sm:mt-8 w-full max-w-full">
+                  <Card className="shadow-sm border-slate-200 bg-white">
+                    <CardHeader className="pb-4 px-6 pt-6">
+                      <CardTitle className="text-base sm:text-lg">Task Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-6 pb-6">
+                      <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                        <iframe
+                          src="https://nexuseshiring.notion.site/ebd//2f06947358fa81398716e4b932a8bb78?v=2f06947358fa81958dd2000cdf2163b2"
+                          className="w-full h-full border-0"
+                          title="Task Details"
+                          allow="clipboard-read; clipboard-write; fullscreen"
+                          allowFullScreen
+                          loading="lazy"
+                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
@@ -115,13 +142,17 @@ export default function DashboardPage() {
             {activeTab === "content-repository" && (
               <div className="mt-4 w-full max-w-full overflow-x-hidden">
                 <Card className="shadow-sm border-slate-200 bg-white">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base sm:text-lg">Content Repository</CardTitle>
-                    <CardDescription className="text-xs">Campaign assets and content library</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-6 sm:py-8 text-slate-500">
-                      <p className="text-sm sm:text-base">Content repository coming soon</p>
+                  <CardContent className="px-6 py-6">
+                    <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-slate-200 bg-white">
+                      <iframe
+                        src="https://docs.google.com/spreadsheets/d/15hNLbWP20_uodU4hjCUg0wDB9WnFNviifNDIpnAs2E8/preview"
+                        className="w-full h-full border-0"
+                        title="Content Repository"
+                        allow="clipboard-read; clipboard-write; fullscreen"
+                        allowFullScreen
+                        loading="lazy"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
+                      />
                     </div>
                   </CardContent>
                 </Card>

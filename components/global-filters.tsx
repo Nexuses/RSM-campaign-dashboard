@@ -18,18 +18,18 @@ export function GlobalFilters() {
   } = useFilterContext()
 
   return (
-    <Card className="shadow-sm border border-slate-200 bg-white">
-      <CardContent className="p-4 sm:p-5">
-        <div className="space-y-3">
-          <div className="pb-2 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
+    <Card className="border-0 bg-white shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <div className="pb-3 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900">Filters</h3>
           </div>
 
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1 sm:flex-initial">
-              <label className="text-sm font-medium text-slate-700 w-full sm:w-24 flex-shrink-0">Project</label>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Project</label>
               <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="border-slate-300 bg-white w-full sm:w-48 h-10 text-sm">
+                <SelectTrigger className="w-full h-11 border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <SelectValue placeholder="All Projects" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
@@ -41,10 +41,10 @@ export function GlobalFilters() {
               </Select>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1 sm:flex-initial">
-              <label className="text-sm font-medium text-slate-700 w-full sm:w-24 flex-shrink-0">Date Range</label>
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Date Range</label>
               <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-                <SelectTrigger className="border-slate-300 bg-white w-full sm:w-48 h-10 text-sm">
+                <SelectTrigger className="w-full h-11 border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <SelectValue placeholder="Select date range" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">

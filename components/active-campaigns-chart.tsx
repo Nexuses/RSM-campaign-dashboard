@@ -54,8 +54,8 @@ export function ActiveCampaignsChart() {
   
   useEffect(() => {
     fetchOneOnOneData()
-    // Poll every 2 minutes
-    const interval = setInterval(fetchOneOnOneData, 120000)
+    // Poll every 5 minutes to avoid quota limits
+    const interval = setInterval(fetchOneOnOneData, 300000)
     return () => clearInterval(interval)
   }, [fetchOneOnOneData])
 
@@ -151,67 +151,82 @@ export function ActiveCampaignsChart() {
     return result
   }, [oneOnOneData, getColumnValue])
   return (
-    <Card className="h-full flex flex-col shadow-md border-slate-200 bg-white">
-      <CardHeader className="pb-4 px-5 sm:px-6">
+    <Card className="h-full flex flex-col border-0 bg-white shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+      <CardHeader className="pb-4 px-6 pt-6 bg-gradient-to-br from-slate-50 to-white border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gradient-to-br from-[#58595b] to-[#4a4b4d] shadow-md flex-shrink-0 flex items-center justify-center text-base" style={{ width: '1.2em', height: '1.2em' }}>
-            <Activity className="text-white" style={{ width: '0.75em', height: '0.75em' }} />
+          <div className="rounded-xl bg-gradient-to-br from-[#58595b] to-[#4a4b4d] shadow-lg p-2.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+            <Activity className="h-5 w-5 text-white" />
           </div>
-          <CardTitle className="text-base sm:text-lg font-semibold">Active Campaigns</CardTitle>
+          <div>
+            <CardTitle className="text-lg font-bold text-slate-900">Active Campaigns</CardTitle>
+            <CardDescription className="text-sm text-slate-600 mt-0.5">Campaign status distribution</CardDescription>
+          </div>
         </div>
-        <CardDescription className="mt-1.5 text-sm">Campaign status distribution</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col items-center justify-center px-5 sm:px-6 pb-5 sm:pb-6">
+      <CardContent className="flex-1 flex flex-col items-center justify-center px-6 pb-6 pt-6">
         {loading && (
-          <div className="h-[300px] sm:h-[350px] flex items-center justify-center text-slate-500 text-sm">
-            Loading active campaigns data...
+          <div className="h-[350px] flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-slate-200"></div>
+              <p className="text-sm text-slate-500">Loading active campaigns data...</p>
+            </div>
           </div>
         )}
         {!loading && (
           <>
             {(!oneOnOneData || oneOnOneData.length === 0) ? (
-              <div className="w-full h-[300px] sm:h-[350px] flex items-center justify-center">
+              <div className="w-full h-[350px] flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-slate-500 text-sm">No data available</p>
                   <p className="text-slate-400 text-xs mt-1">Loading from "1-1 RSM : All Campaign" sheet</p>
-                  <p className="text-slate-300 text-xs mt-1">Check browser console (F12) for details</p>
                 </div>
               </div>
             ) : data.reduce((sum, item) => sum + item.value, 0) === 0 ? (
-              <div className="w-full h-[300px] sm:h-[350px] flex items-center justify-center">
+              <div className="w-full h-[350px] flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-slate-500 text-sm">No Active campaigns found</p>
                   <p className="text-slate-400 text-xs mt-1">Data loaded: {oneOnOneData.length} rows</p>
-                  <p className="text-slate-400 text-xs mt-1">After filtering: {data[0]?.value === 0 && data[1]?.value === 0 ? '0 Active, 0 Completed' : 'Check filters'}</p>
-                  <p className="text-slate-300 text-xs mt-1">Check browser console (F12) for debugging</p>
                 </div>
               </div>
             ) : (
-              <div className="w-full h-[300px] sm:h-[350px]">
+              <div className="w-full h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                    <defs>
+                      <filter id="pieShadow">
+                        <feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.1"/>
+                      </filter>
+                    </defs>
                     <Pie
                       data={data}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
-                      label={({ name, value }) => {
-                        return `${name}: ${value}`
-                      }}
-                      outerRadius="60%"
+                      labelLine={true}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius="55%"
+                      innerRadius="30%"
                       fill="#8884d8"
                       dataKey="value"
+                      animationBegin={0}
+                      animationDuration={800}
+                      animationEasing="ease-out"
                     >
                       {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.fill}
+                          style={{ filter: "url(#pieShadow)" }}
+                          className="transition-all duration-300 hover:opacity-90"
+                        />
                       ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "white",
                         border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        borderRadius: "12px",
+                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)",
+                        padding: "12px",
                       }}
                       formatter={(value: number) => [value, "Count"]}
                     />
@@ -219,22 +234,22 @@ export function ActiveCampaignsChart() {
                 </ResponsiveContainer>
               </div>
             )}
-            <div className="w-full mt-4 pt-4 border-t border-slate-200">
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
+            <div className="w-full mt-6 pt-6 border-t border-slate-100">
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center justify-center gap-6 flex-wrap">
                   {data.map((entry, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                    <div key={index} className="flex items-center gap-2.5">
                       <div 
-                        className="w-4 h-4 rounded-full flex-shrink-0" 
+                        className="w-4 h-4 rounded-md flex-shrink-0 shadow-sm" 
                         style={{ backgroundColor: entry.fill }}
                       />
-                      <span className="text-sm text-slate-700 font-medium">
-                        {entry.name}
+                      <span className="text-sm font-medium text-slate-700">
+                        {entry.name}: {entry.value}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="text-sm text-slate-500 mt-1.5">1-1 Campaigns</p>
+                <p className="text-xs text-slate-500 mt-1">1-1 Campaigns</p>
               </div>
             </div>
           </>
